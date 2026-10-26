@@ -1,0 +1,37 @@
+name: Compilar Sunpad nativo (Apple Silicon)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    name: Compilar motor de Sunpad
+    runs-on: macos-15
+
+    steps:
+      - name: 1. Preparar el entorno virtual
+        uses: actions/checkout@v4
+
+      - name: 2. Activar la versión más reciente de Xcode
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode_[0-9]*.app | grep -v -i beta | sort -V | tail -n 1)
+          sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
+          xcodebuild -version
+
+      - name: 3. Clonar repositorios de PadMint y Sunpad
+        run: |
+          git clone https://github.com/chrissotraidis/padmint.git
+          git clone https://github.com/chrissotraidis/sunpad.git
+
+      - name: 4. Ejecutar la compilación del cascarón
+        run: |
+          cd padmint
+          HASH_EXACTO=$(git -C ../sunpad rev-parse HEAD)
+          yes | python3 -m padmint build --repo ../sunpad --revision $HASH_EXACTO --target ios sunpad
+
+      - name: 5. Extraer y empaquetar el .ipa resultante
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sunpad-Cascaron-Firmado
+          path: '**/*.ipa'
+          retention-days: 1
